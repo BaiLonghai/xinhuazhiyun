@@ -1,0 +1,69 @@
+#!/bin/bash
+#使用 yq 命令来读取 yaml 格式的配置文件，并循环检查每个 IP 地址的网络情况。
+# 如果某个 IP 地址的网络不可用（三次都无法 ping 通）或者网络延迟大于指定的超时时间，则会发送钉钉报警。
+# 在每个监控周期结束时检查当前时间是否在指定的不报警时间段内，如果在该时间段内，则不会发送报警信息。
+#读取配置文件
+#config.yaml.path= ./config.yaml
+checkInterval=$(yq r config.yaml checkInterval)
+timeout=$(yq r config.yaml timeout)
+silentTime=$(yq r config.yaml silentTime)
+
+# 循环监控网络节点
+while true; do
+  # 循环检查每个网络节点
+  for project in $(yq r config.yaml project)
+    do
+    site=$(yq r config.yaml project.${project}.site)
+    dingtalk=$(yq r config.yaml project.${project}.dingtalk)
+    projectName=$(yq r config.yaml project.${project}.name)
+    # shellcheck disable=SC2068
+    # shellcheck disable=SC2068
+    for node in ${site[@]}
+      do
+      # 检查当前时间是否在silentTime时间段内
+      currentTime=$(date +"%H:%M")
+      if [[ "$currentTime" < "${silentTime%-*}" || "$currentTime" > "${silentTime#*-}" ]]; then
+        # 在silentTime时间段内，不进行报警
+        continue
+      fi
+
+      nodeName=$(yq r config.yaml project.${project}.site.${node}.name)
+      nodeIp=$(yq r config.yaml project.${project}.site.${node}.ip)
+
+      # 判断该网络节点是否可以 ping 通
+      ping -c 3 $nodeIp &> /dev/null
+      if [ $? -ne 0 ]; then
+          # 如果三次都无法 ping 通，则发送钉钉报警
+          curl -H 'Content-Type: application/json' -X POST -d '{"msgtype":"text","text":{"content":"'"$projectName-$nodeName网络不通"'"}}' $dingtalk
+
+          # 记录该网络节点的状态
+          echo "$nodeIp:down:$currentTime" >> status.log
+      else
+          # 计算网络延迟
+          delay=$(ping -w $timeout $nodeIp | grep time= | awk '{print $7}' | cut -d '=' -f 2)
+          if [ $delay -gt $timeout ]; then
+              # 如果网络延迟大于 timeout，则发送钉钉报警
+            curl -H 'Content-Type: application/json' -X POST -d '{"msgtype":"text","text":{"content":"'"$projectName-$nodeName网络延迟为：$delay ms"'"}}' $dingtalk
+          # 记录该网络节点的状态
+          echo "$nodeIp:delay:$currentTime" >> status.log
+      else
+          # 如果网络节点正常，则更新它的状态
+          echo "$nodeIp:up:$currentTime" >> status.log
+          # 获取上一次状态
+          lastStatus=$(grep "$nodeIp" status.log | tail -1 | cut -d ':' -f 2)
+           # 如果上一次状态是 down 或 delay，并且当前状态是 up，则发送钉钉报警
+           # shellcheck disable=SC2109
+           if [ "$lastStatus" == "down" || "$lastStatus" == "delay" ] && [ "$currentStatus" == "up" ]; then
+             curl -H 'Content-Type: application/json' -X POST -d '{"msgtype":"text","text":{"content":"'"$projectName-$nodeName网络恢复"'"}}' $dingtalk
+           fi
+      fi
+  fi
+done
+done
+
+#每隔 checkInterval 秒检测一次网络
+sleep $checkInterval
+done
+
+
+

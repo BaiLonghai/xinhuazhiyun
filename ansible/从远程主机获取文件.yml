@@ -1,0 +1,16 @@
+---
+- hosts: all
+  tasks:
+    - name: find_file
+      find:
+        paths: /root/netqps/files/    # 远端服务器日志目录
+        patterns: "*.lzo"             # 匹配以.lzo结尾的日志文件
+        recurse: no
+      register: file_name
+
+    - name: copy_file
+      fetch:
+        src: "{{ item.path }}"
+        dest: /home/hjj/netqps/data/   # 本地ansible机器存放日志的目录
+        flat: yes  ##是否为每个主机文件创建单独文件夹
+      with_items: "{{ file_name.files }}"

@@ -1,0 +1,33 @@
+checkInterval: 3m
+timeout: 50ms
+silentTime: 19-20
+project:
+  -
+    name: 西湖景区
+    dingtalk: https://oapi.dingtalk.com/robot/send?access_token=71e152000cd4132255c1e994ed3f7be9dccbbcb04cd629ad93ab0830c4828070
+
+    site:
+      - name: camera1
+        ip: 192.168.100.236
+      - name: camera2
+        ip: 192.168.100.237
+      - name: camera3
+        ip: 192.168.100.23
+      - name: camera4
+        ip: 192.168.100.24
+      - name: camera8888
+        ip: 8.8.8.8
+  -
+    name: 玄武湖景区
+    dingtalk: https://oapi.dingtalk.com/robot/send?access_token=71e152000cd4132255c1e994ed3f7be9dccbbcb04cd629ad93ab0830c4828070
+    site:
+      - name: camera0
+        ip: 192.168.100.235
+      - name: 南山路camera
+        ip: 192.168.100.237
+      - name: 南山路camera3
+        ip: 192.168.100.23
+      - name: 南山路camera4
+        ip: 192.168.100.100
+      - name: camera8888
+        ip: 8.8.8.8
