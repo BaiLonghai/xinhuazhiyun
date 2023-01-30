@@ -1,0 +1,38 @@
+version: '3.2'
+services:
+  elasticsearch:
+    image: elasticsearch:7.10.1
+    # can't limit to less than 1500M
+    mem_limit: 1500M
+    container_name: elasticsearch
+    restart: always
+    environment:
+      - bootstrap.memory_lock=true  # 为了防止内存被交换到磁盘, 从而导致性能下降
+      - discovery.type=single-node  # 单节点, 不需要集群
+      - xpack.security.enabled=true  # 作用: 启用安全认证, 使得ES的API接口需要认证才能访问
+      - xpack.security.audit.enabled=true  # 作用: 启用审计日志, 使得ES的API接口访问日志会被记录
+      - ELASTIC_PASSWORD=123asd
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+      - "9300:9300"
+  kibana:
+    image: kibana:7.10.1
+    mem_limit: 500M
+    container_name: kibana
+    restart: always
+    depends_on:
+      - elasticsearch
+    environment:
+      - ELASTICSEARCH_HOSTS=http://192.168.133.130:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=123asd
+    ports:
+      - 5601:5601
+volumes:
+  es_data:
